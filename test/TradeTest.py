@@ -1,37 +1,90 @@
 import unittest
 from okx import Trade
-class TradeTest(unittest.TestCase):
+from loadEnv import load_env_tuple
+
+
+class TradeTestPingcang:
     def setUp(self):
-        api_key = 'your_apiKey'
-        api_secret_key = 'your_secretKey'
-        passphrase = 'your_secretKey'
-        self.tradeApi = Trade.TradeAPI(api_key, api_secret_key, passphrase, False, '1')
+        api_key, api_secret_key, passphrase = load_env_tuple()
+        self.tradeApi = Trade.TradeAPI(api_key, api_secret_key, passphrase, False, '0')
+        
+    def pingcang(self):
+    #     {
+    #     "instId":"SATS-USDT",
+    #     "tdMode":"cross",
+
+    #     "side":"buy",
+
+    #     "ordType":"market",
+    #     "sz": "100",
+    #     "tgtCcy": "base_ccy"
+
+    # },
+        orderData = [    
+    {
+        "instId":"SATS-USDT-SWAP",
+        "tdMode":"cross",
+        
+        "side":"buy",
+        # "posSide":"short",
+
+        "ordType":"market",
+
+        "sz": "100"
+
+        # "tgtCcy": "base_ccy"
+      
+    }]
+        print(self.tradeApi.place_multiple_orders(orderData))
+    
+class TradeTestKaicang:
+    def setUp(self):
+        api_key, api_secret_key, passphrase = load_env_tuple()
+        self.tradeApi = Trade.TradeAPI(api_key, api_secret_key, passphrase, False, '0')
+    
     """
     def test_place_order(self):
         print(self.tradeApi.place_order("BTC-USDT",tdMode="cross",clOrdId="asCai1",side="buy",ordType="limit",sz="0.01",px="18000"))
     def test_cancel_order(self):
         print(self.tradeApi.cancel_order(instId="ETH-USDT",ordId="480702180748558336"))
+    """
+    def kaicang(self):
 
-    def test_batch_order(self):
-        orderData = [    {
-        "instId":"ETH-USDT",
+        orderData = [    
+                            {
+        "instId":"SATS-USDT",
         "tdMode":"cross",
-        "clOrdId":"b151121",
+
         "side":"buy",
-        "ordType":"limit",
-        "px":"2.15",
-        "sz":"2"
+
+        "ordType":"market",
+        # 直接的数量，没有相乘 998,000,000
+        "sz": "501000000",
+        "tgtCcy": "base_ccy"
+
     },
+
     {
-        "instId":"BTC-USDT",
+        "instId":"SATS-USDT-SWAP",
         "tdMode":"cross",
-        "clOrdId":"b152233",
-        "side":"buy",
-        "ordType":"limit",
-        "px":"2.15",
-        "sz":"2"
-    }]
+        
+        "side":"sell",
+        # "posSide":"short",
+
+        "ordType":"market",
+        # sz 会乘以 10，000，000
+        "sz": "50"
+
+        # "tgtCcy": "base_ccy"
+      
+        }
+        
+        ]
         print(self.tradeApi.place_multiple_orders(orderData))
+
+
+
+    """
     #480702180748558336
     def test_cancel_batch_orders(self):
         data=[
@@ -179,8 +232,8 @@ class TradeTest(unittest.TestCase):
     #     print(self.tradeApi.place_algo_order(instId='BTC-USDT-SWAP', tdMode='cross', side='buy', ordType='conditional', \
     #                                          tpTriggerPx='15', tpOrdPx='18', sz='2',algoClOrdId='7678687',quickMgnType='manual'))
 
-    def test_order_algos_list(self):
-        print(self.tradeApi.order_algos_list(ordType='conditional'))
+    # def test_order_algos_list(self):
+    #     print(self.tradeApi.order_algos_list(ordType='conditional'))
 
     # def test_order_algo(self):
     #     print(self.tradeApi.place_order(instId='BTC-USDT-SWAP', tdMode='cross', side='buy',px='121',sz='2',
@@ -188,4 +241,9 @@ class TradeTest(unittest.TestCase):
     # def test_close_all_positions(self):
     #     print(self.tradeApi.close_positions(instId="BTC-USDT-SWAP", mgnMode="cross",clOrdId='1213124'))
 if __name__=='__main__':
-    unittest.main()
+    kc = TradeTestKaicang()
+    kc.setUp()
+    kc.kaicang()
+
+
+    
