@@ -1,12 +1,68 @@
 import time
+import asyncio
+import sys
 
 from okx.websocket.WsPublic import WsPublic
 from SetUpApi import SetUpApi
+from okx.websocket.WsPublicAsync import WsPublicAsync
+from okx import Account
+
+
+class SprdBookStatus:
+    def __init__(self, ticker):
+        self.ticker = ticker
+        self.channel = "sprd-bbo-tbt"
+        self.timeStamp = 0
+    
+# 数据格式
+#   "arg": {
+#     "channel": "sprd-books5",
+#     "sprdId": "BTC-USDT_BTC-USDT-SWAP"
+#   },
+#   "data": [
+#     {
+#       "asks": [
+#         ["111.06","55154","2"],],
+#       "bids": [
+#         ["111.05","57745","2"],],
+#       "ts": "1670324386802"
+#     }
+#   ]
+# asks和bids值数组举例说明： ["411.8", "10", "4"]
+# - 411.8为深度价格
+# - 10为此价格的数量 （单位为szCcy)
+    
+    def updateSprdBooks(self, message):
+        arg = message["arg"]
+        if arg["channel"] != self.channel or arg["sprdId"] != self.ticker:
+            return
+        data = message["data"]
+
+        self.bidsPrice = data["bids"][0]
+        self.bidsAmount = data["bids"][1]
+
+        self.asksPrice = data["asks"][0]
+        self.asksAmount = data["asks"][1]
+
+        self.timeStamp = data["ts"]
+
+    def TimeStampChangedWithPrice(self):
+        return time.time() - self.timeStamp
+
 
 class FundingRateArbitrageBot(SetUpApi):
     
     def __init__(self):
         super().__init__()
+        self.AccountAPI = Account.AccountAPI(self.api_key, self.api_secret_key, self.passphrase, use_server_time=False, flag='0')
+        url = "wss://wspap.okx.com:8443/ws/v5/business"
+        self.ws = WsPublicAsync(url=url)
+        subChannels = []
+        TickersPriceLimit = {}
+        self.sprdBookStatus = None
+
+    async def startWs(self):
+        await self.ws.start()
 
     def BuildeMarketTradeOrder(self, instId, tdMode, side, sz, tgtCcy=None):
         order = {
@@ -24,6 +80,45 @@ class FundingRateArbitrageBot(SetUpApi):
     def place_multiple_order(self, orders):
         print("FundingRateArbitrageBot place_multiple_order result: " + str(self.tradeApi.place_multiple_orders(orders)))
 
+    def control_risk(self):
+        try:        
+            res = self.AccountAPI.get_positions("SWAP", "SATS-USDT-SWAP")
+            print(res)
+            if res['code'] == '0':
+                if len(res['data']) == 1:
+                    if float(res['data'][0]['notionalUsd']) > 10000:
+                        print(">10000 " + res['data'][0]['notionalUsd'])
+
+                        buy_args = "trade buy SATS-USDT 300000000 SATS-USDT-SWAP 30".split()
+                        op_trade(buy_args)
+        except Exception:
+            print("错误")
+            
+
+    # 腿交易sprd-bbo-tbt, sprd-books5
+    async def subscribeSprdBooks(self, sprdId):
+        arg1 =   {
+            "channel": "sprd-bbo-tbt",
+            "sprdId": sprdId
+        }
+        self.sprdBookStatus = SprdBookStatus(sprdId)
+        await self.ws.subscribe([arg1], lambda message : self.sprdBookStatus.updateSprdBooks(message))
+
+    def getSprdBookStatus(self):
+        return self.sprdBookStatus
+
+
+    def updateTickersPriceLimit(self, message):
+        pass
+
+    # 限价频道price-limit
+    async def subscribeTickerPriceLimit(self, ticker):
+        arg1 = {"channel": "price-limit", "instId": ticker}
+        if arg1 in self.subChannels:
+            print("已经订阅price-limit, tiker:" + ticker)
+            return
+        self.subChannels.append(arg1)
+        await self.ws.subscribe([arg1], lambda message : self.updateTickersPriceLimit(message))
 
     
 
@@ -31,9 +126,31 @@ class FundingRateArbitrageBot(SetUpApi):
 def publicCallback(message):
     print("publicCallback", message)
 
+def op_trade(input_args):
+    derivatives_side, margin_instId, margin_sz, derivatives_instId, derivatives_sz = input_args[1:]
+    margin_side = ""
+    if derivatives_side == "buy":
+        margin_side = "sell"
+    elif derivatives_side == "sell":
+        margin_side = "buy"
+    else:
+        return
+    hedge_orders = [bot.BuildeMarketTradeOrder(margin_instId, "cross", margin_side, margin_sz, "base_ccy"),
+                    bot.BuildeMarketTradeOrder(derivatives_instId, "cross", derivatives_side, derivatives_sz)
+                    ]
 
-if __name__ == '__main__':
-    bot = FundingRateArbitrageBot()
+    bot.place_multiple_order(hedge_orders)
+
+    print("shuru: " + str(hedge_orders))
+
+
+
+def op_sprd_status():
+    print(bot.getSprdBookStatus().TimeStampChangedWithPrice())
+
+
+
+async def main():
     while True:
         input_data = input()
 
@@ -41,22 +158,23 @@ if __name__ == '__main__':
         if not input_data:
             # todo 请求下两边的价格, 看一下合约溢价
             break
-        # switch()
-        derivatives_side, margin_instId, margin_sz, derivatives_instId, derivatives_sz = input_args[0:]
-        margin_side = ""
-        if derivatives_side == "buy":
-            margin_side = "sell"
-        elif derivatives_side == "sell":
-            margin_side = "buy"
-        else:
-            break
-        hedge_orders = [bot.BuildeMarketTradeOrder(margin_instId, "cross", margin_side, margin_sz, "base_ccy"),
-                        bot.BuildeMarketTradeOrder(derivatives_instId, "cross", derivatives_side, derivatives_sz)
-                        ]
+        op_type = input_args[0]
+        if op_type == "trade":
+            op_trade(input_args=input_args)
+        elif op_type == "sub_sprd":
+            await bot.startWs()
+            sprdId = input_args[1:]
+            await bot.subscribeSprdBooks(sprdId)
+        elif op_type == "sprd_status":
+            op_sprd_status()
+        elif op_type == "risk_monitor":
+            while True:
+                bot.control_risk()
+                time.sleep(10)
 
-        bot.place_multiple_order(hedge_orders)
-
-        print("shuru: " + str(hedge_orders))
+if __name__ == '__main__':
+    bot = FundingRateArbitrageBot()
+    asyncio.run(main())
 
     #url = "wss://wspri.coinall.ltd:8443/ws/v5/ipublic?brokerId=9999"
     # url = "wss://wspap.okex.com:8443/ws/v5/public"
