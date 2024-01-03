@@ -6,7 +6,11 @@ from okx.websocket.WsPublic import WsPublic
 from SetUpApi import SetUpApi
 from okx.websocket.WsPublicAsync import WsPublicAsync
 from okx import Account
+from logger import get_my_logger    
+import traceback
 
+
+logUtil = get_my_logger("arb")
 
 class SprdBookStatus:
     def __init__(self, ticker):
@@ -78,21 +82,23 @@ class FundingRateArbitrageBot(SetUpApi):
         return order
     
     def place_multiple_order(self, orders):
-        print("FundingRateArbitrageBot place_multiple_order result: " + str(self.tradeApi.place_multiple_orders(orders)))
+        logUtil.debug("FundingRateArbitrageBot place_multiple_order result: " + str(self.tradeApi.place_multiple_orders(orders)))
 
     def control_risk(self):
         try:        
             res = self.AccountAPI.get_positions("SWAP", "SATS-USDT-SWAP")
-            print(res)
+            logUtil.debug(res)
             if res['code'] == '0':
                 if len(res['data']) == 1:
-                    if float(res['data'][0]['notionalUsd']) > 10000:
-                        print(">10000 " + res['data'][0]['notionalUsd'])
+                    if float(res['data'][0]['notionalUsd']) > 15000:
+                        logUtil.debug(">10000 " + res['data'][0]['notionalUsd'])
 
                         buy_args = "trade buy SATS-USDT 300000000 SATS-USDT-SWAP 30".split()
                         op_trade(buy_args)
-        except Exception:
-            print("错误")
+        except Exception as e:
+            logUtil.error(traceback.format_exc())
+            self.AccountAPI = Account.AccountAPI(self.api_key, self.api_secret_key, self.passphrase, use_server_time=False, flag='0')
+
             
 
     # 腿交易sprd-bbo-tbt, sprd-books5
@@ -115,7 +121,7 @@ class FundingRateArbitrageBot(SetUpApi):
     async def subscribeTickerPriceLimit(self, ticker):
         arg1 = {"channel": "price-limit", "instId": ticker}
         if arg1 in self.subChannels:
-            print("已经订阅price-limit, tiker:" + ticker)
+            logUtil.debug("已经订阅price-limit, tiker:" + ticker)
             return
         self.subChannels.append(arg1)
         await self.ws.subscribe([arg1], lambda message : self.updateTickersPriceLimit(message))
@@ -124,7 +130,7 @@ class FundingRateArbitrageBot(SetUpApi):
 
 
 def publicCallback(message):
-    print("publicCallback", message)
+    logUtil.debug("publicCallback", message)
 
 def op_trade(input_args):
     derivatives_side, margin_instId, margin_sz, derivatives_instId, derivatives_sz = input_args[1:]
@@ -141,12 +147,12 @@ def op_trade(input_args):
 
     bot.place_multiple_order(hedge_orders)
 
-    print("shuru: " + str(hedge_orders))
+    logUtil.debug("shuru: " + str(hedge_orders))
 
 
 
 def op_sprd_status():
-    print(bot.getSprdBookStatus().TimeStampChangedWithPrice())
+    logUtil.debug(bot.getSprdBookStatus().TimeStampChangedWithPrice())
 
 
 
@@ -170,7 +176,7 @@ async def main():
         elif op_type == "risk_monitor":
             while True:
                 bot.control_risk()
-                time.sleep(10)
+                time.sleep(1)
 
 if __name__ == '__main__':
     bot = FundingRateArbitrageBot()
@@ -188,6 +194,6 @@ if __name__ == '__main__':
 
     # ws.subscribe(args, publicCallback)
     # time.sleep(10)
-    # print("-----------------------------------------unsubscribe all--------------------------------------------")
+    # logUtil.debug("-----------------------------------------unsubscribe all--------------------------------------------")
     # args3 = [arg1, arg2]
     # ws.unsubscribe(args3, publicCallback)
