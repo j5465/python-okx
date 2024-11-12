@@ -1,11 +1,10 @@
 import unittest
 from okx import PublicData
+from loadEnv import load_env_tuple
 class publicDataTest(unittest.TestCase):
     def setUp(self):
-        api_key = 'your_apiKey'
-        api_secret_key = 'your_secretKey'
-        passphrase = 'your_secretKey'
-        self.publicDataApi = PublicData.PublicAPI(api_key, api_secret_key, passphrase, use_server_time=False, flag='1')
+        api_key,  api_secret_key, passphrase = load_env_tuple()
+        self.publicDataApi = PublicData.PublicAPI(api_key, api_secret_key, passphrase, use_server_time=False, flag='0')
     '''
     TestCase For:
     INTEREST_LOAN = '/api/v5/public/interest-rate-loan-quota' #need to add
@@ -23,8 +22,11 @@ class publicDataTest(unittest.TestCase):
         print(self.publicDataApi.get_insurance_fund("SWAP",uly= "BTC-USD"))
     def test_convert_contract_coin(self):
         print(self.publicDataApi.get_convert_contract_coin(instId="BTC-USD-SWAP",sz = "1",px = "27000"))
+    '''
     def test_get_instruments(self):
-        print(self.publicDataApi.get_instruments("SPOT"))
+        # print(self.publicDataApi.get_instruments("MARGIN"))
+        print(self.publicDataApi.get_instruments("SWAP"))
+    '''
     def test_delivery_exercise_history(self):
         print(self.publicDataApi.get_deliver_history("FUTURES","BTC-USD"))
     def test_get_open_interest(self):
@@ -56,8 +58,8 @@ class publicDataTest(unittest.TestCase):
     # def test_get_option_tickBands(self):
     #     print(self.publicDataApi.get_option_tick_bands(instType='OPTION'))
 
-    def test_get_option_trades(self):
-        print(self.publicDataApi.get_option_trades(instFamily='BTC-USD'))
+    # def test_get_option_trades(self):
+    #     print(self.publicDataApi.get_option_trades(instFamily='BTC-USD'))
 
 if __name__ == '__main__':
     unittest.main()

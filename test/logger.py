@@ -17,7 +17,7 @@ LOGGING = {
             'level': 'DEBUG',
             'formatter': 'default',
             'filename': './logs/log',
-            'when': 'd',  # 分割单位，秒
+            'when': 'MIDNIGHT',  # 分割单位，秒
             'encoding': 'utf-8',
         },
         'console': {

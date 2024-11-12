@@ -68,7 +68,7 @@ class FundingRateArbitrageBot(SetUpApi):
     async def startWs(self):
         await self.ws.start()
 
-    def BuildeMarketTradeOrder(self, instId, tdMode, side, sz, tgtCcy=None):
+    def BuildMarketTradeOrder(self, instId, tdMode, side, sz, tgtCcy=None):
         order = {
             "instId": instId,
             "tdMode": tdMode,
@@ -82,18 +82,21 @@ class FundingRateArbitrageBot(SetUpApi):
         return order
     
     def place_multiple_order(self, orders):
-        logUtil.debug("FundingRateArbitrageBot place_multiple_order result: " + str(self.tradeApi.place_multiple_orders(orders)))
+        orders_res = self.tradeApi.place_multiple_orders(orders)
 
+        logUtil.debug("FundingRateArbitrageBot place_multiple_order result: " + str(orders_res))
+        return orders_res
+    
     def control_risk(self):
         try:        
-            res = self.AccountAPI.get_positions("SWAP", "SATS-USDT-SWAP")
+            res = self.AccountAPI.get_positions("SWAP", "NOT-USDT-SWAP")
             logUtil.debug(res)
+
             if res['code'] == '0':
                 if len(res['data']) == 1:
-                    if float(res['data'][0]['notionalUsd']) > 15000:
-                        logUtil.debug(">10000 " + res['data'][0]['notionalUsd'])
-
-                        buy_args = "trade buy SATS-USDT 300000000 SATS-USDT-SWAP 30".split()
+                    notionalUsd = float(res['data'][0]['notionalUsd'])
+                    if notionalUsd > 16000:
+                        buy_args = "trade buy NOT-USDT 20000 NOT-USDT-SWAP 200".split()
                         op_trade(buy_args)
         except Exception as e:
             logUtil.error(traceback.format_exc())
@@ -141,15 +144,34 @@ def op_trade(input_args):
         margin_side = "buy"
     else:
         return
-    hedge_orders = [bot.BuildeMarketTradeOrder(margin_instId, "cross", margin_side, margin_sz, "base_ccy"),
-                    bot.BuildeMarketTradeOrder(derivatives_instId, "cross", derivatives_side, derivatives_sz)
-                    ]
+    margin_order = bot.BuildMarketTradeOrder(margin_instId, "cross", margin_side, margin_sz, "base_ccy")
+    derivatives_order = bot.BuildMarketTradeOrder(derivatives_instId, "cross", derivatives_side, derivatives_sz)
+    print(str(derivatives_order))
 
+    if derivatives_side == "buy":
+        # place_order_sep(derivatives_order, margin_order)
+        place_diret_order(derivatives_order, margin_order)
+    else:
+        place_diret_order(derivatives_order, margin_order)
+
+
+
+    logUtil.debug("shuru: " + str(derivatives_order) + " " + str(margin_order))
+
+
+# def place_order_sep(derivatives_order, margin_order):
+    
+#     order_res = bot.place_multiple_order([derivatives_order])
+#     if order_res['code'] == "0":
+#         bot.place_multiple_order([margin_order])
+#     else:
+#         logUtil.debug("合约风险减仓失败")
+   
+
+
+def place_diret_order(derivatives_order, margin_order):
+    hedge_orders = [margin_order, derivatives_order]
     bot.place_multiple_order(hedge_orders)
-
-    logUtil.debug("shuru: " + str(hedge_orders))
-
-
 
 def op_sprd_status():
     logUtil.debug(bot.getSprdBookStatus().TimeStampChangedWithPrice())
@@ -176,7 +198,8 @@ async def main():
         elif op_type == "risk_monitor":
             while True:
                 bot.control_risk()
-                time.sleep(1)
+                time.sleep(5)
+                # exit()
 
 if __name__ == '__main__':
     bot = FundingRateArbitrageBot()

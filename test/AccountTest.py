@@ -1,13 +1,36 @@
 
 import unittest
 from okx import Account
+from loadEnv import load_env
+import os
+
+# def load_env():
+#     # Load environment variables from .env file
+#     load_dotenv()
+
+#     # Get environment variables
+#     api_key = os.getenv("OPENAI_API_KEY")
+#     api_secret = os.getenv("OPENAI_API_S")
+#     pass_phrase = os.getenv("pass_phrase")
+
+#     # Check if environment variables are present
+#     if not api_key or not api_secret or not pass_phrase:
+#         raise ValueError("Environment variables are missing.")
+
+#     # Return environment variables as dictionary
+#     return {
+#         "api_key": api_key,
+#         "api_secret": api_secret,
+#         "pass_phrase": pass_phrase
+#     }
 
 class AccountTest(unittest.TestCase):
     def setUp(self):
-        api_key = 'your_apiKey'
-        api_secret_key = 'your_secretKey'
-        passphrase = 'your_secretKey'
-        self.AccountAPI = Account.AccountAPI(api_key, api_secret_key, passphrase, use_server_time=False, flag='1')
+        api_data = load_env()
+        api_key = api_data['api_key']
+        api_secret_key = api_data['api_secret']
+        pass_phrase = api_data['pass_phrase']
+        self.AccountAPI = Account.AccountAPI(api_key, api_secret_key, pass_phrase, use_server_time=False, flag='0')
     '''
     POSITIONS_HISTORY = '/api/v5/account/positions-history' #need add
     GET_PM_LIMIT = '/api/v5/account/position-tiers' #need add
@@ -102,7 +125,7 @@ class AccountTest(unittest.TestCase):
     # def test_borrow_repay(self):
     #     print(self.AccountAPI.borrow_repay("BTC", "borrow", "1.0"))
 
-    def test_simulated_margin(self):
-        print(self.AccountAPI.get_simulated_margin(spotOffsetType='3'))
+    # def test_simulated_margin(self):
+    #     print(self.AccountAPI.get_simulated_margin(spotOffsetType='3'))
 if __name__ == '__main__':
     unittest.main()

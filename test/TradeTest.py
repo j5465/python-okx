@@ -9,32 +9,34 @@ class TradeTestPingcang:
         self.tradeApi = Trade.TradeAPI(api_key, api_secret_key, passphrase, False, '0')
         
     def pingcang(self):
-    #     {
-    #     "instId":"SATS-USDT",
+        orderData = [  
+    # {
+    #     "instId":"GPT-USDT-SWAP",
     #     "tdMode":"cross",
-
-    #     "side":"buy",
+        
+    #     "side":"sell",
+    #     # "posSide":"short",
 
     #     "ordType":"market",
-    #     "sz": "100",
-    #     "tgtCcy": "base_ccy"
 
-    # },
-        orderData = [    
-    {
-        "instId":"SATS-USDT-SWAP",
+    #     "sz": "10"
+
+    #     # "tgtCcy": "base_ccy"
+      
+    # }
+    # ,  
+        {
+        "instId":"GPT-USDT",
         "tdMode":"cross",
-        
-        "side":"buy",
-        # "posSide":"short",
+
+        "side":"sell",
 
         "ordType":"market",
+        "sz": "100",
+        "tgtCcy": "base_ccy"
 
-        "sz": "100"
-
-        # "tgtCcy": "base_ccy"
-      
-    }]
+    }
+    ]
         print(self.tradeApi.place_multiple_orders(orderData))
     
 class TradeTestKaicang:
@@ -52,20 +54,20 @@ class TradeTestKaicang:
 
         orderData = [    
                             {
-        "instId":"SATS-USDT",
+        "instId":"GPT-USDT",
         "tdMode":"cross",
 
         "side":"buy",
 
         "ordType":"market",
         # 直接的数量，没有相乘 998,000,000
-        "sz": "501000000",
+        "sz": "50",
         "tgtCcy": "base_ccy"
 
     },
 
     {
-        "instId":"SATS-USDT-SWAP",
+        "instId":"GPT-USDT-SWAP",
         "tdMode":"cross",
         
         "side":"sell",
@@ -73,7 +75,7 @@ class TradeTestKaicang:
 
         "ordType":"market",
         # sz 会乘以 10，000，000
-        "sz": "50"
+        "sz": "5"
 
         # "tgtCcy": "base_ccy"
       
@@ -241,9 +243,15 @@ class TradeTestKaicang:
     # def test_close_all_positions(self):
     #     print(self.tradeApi.close_positions(instId="BTC-USDT-SWAP", mgnMode="cross",clOrdId='1213124'))
 if __name__=='__main__':
-    kc = TradeTestKaicang()
-    kc.setUp()
-    kc.kaicang()
+    # kc = TradeTestKaicang()
+    # kc.setUp()
+    # kc.kaicang()
+
+
+    pc =TradeTestPingcang()
+    pc.setUp()
+    pc.pingcang()
+    
 
 
     
