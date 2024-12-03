@@ -1,6 +1,5 @@
 from okx import Trade
 from loadEnv import load_env_tuple
-from okx.websocket.WsPublicAsync import WsPublicAsync
 from okx.websocket.WsPprivateAsync import WsPrivateAsync
 
 

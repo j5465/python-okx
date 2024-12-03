@@ -2,7 +2,6 @@ import time
 import asyncio
 import sys
 
-from okx.websocket.WsPublic import WsPublic
 from SetUpApi import SetUpApi
 from okx.websocket.WsPublicAsync import WsPublicAsync
 from okx import Account
@@ -95,8 +94,8 @@ class FundingRateArbitrageBot(SetUpApi):
             if res['code'] == '0':
                 if len(res['data']) == 1:
                     notionalUsd = float(res['data'][0]['notionalUsd'])
-                    if notionalUsd > 16000:
-                        buy_args = "trade buy NOT-USDT 20000 NOT-USDT-SWAP 200".split()
+                    if notionalUsd > 5300:
+                        buy_args = "trade buy NMR-USDT 20 NMR-USDT-SWAP 201".split()
                         op_trade(buy_args)
         except Exception as e:
             logUtil.error(traceback.format_exc())
@@ -137,41 +136,17 @@ def publicCallback(message):
 
 def op_trade(input_args):
     derivatives_side, margin_instId, margin_sz, derivatives_instId, derivatives_sz = input_args[1:]
-    margin_side = ""
-    if derivatives_side == "buy":
-        margin_side = "sell"
-    elif derivatives_side == "sell":
-        margin_side = "buy"
-    else:
-        return
-    margin_order = bot.BuildMarketTradeOrder(margin_instId, "cross", margin_side, margin_sz, "base_ccy")
+
+    margin_order = bot.BuildMarketTradeOrder(margin_instId, "cross", "sell" if derivatives_side == "buy" else "buy", margin_sz, "base_ccy")
     derivatives_order = bot.BuildMarketTradeOrder(derivatives_instId, "cross", derivatives_side, derivatives_sz)
     print(str(derivatives_order))
 
-    if derivatives_side == "buy":
-        # place_order_sep(derivatives_order, margin_order)
-        place_diret_order(derivatives_order, margin_order)
-    else:
-        place_diret_order(derivatives_order, margin_order)
-
-
+    hedge_orders = [margin_order, derivatives_order]
+    bot.place_multiple_order(hedge_orders)
 
     logUtil.debug("shuru: " + str(derivatives_order) + " " + str(margin_order))
 
 
-# def place_order_sep(derivatives_order, margin_order):
-    
-#     order_res = bot.place_multiple_order([derivatives_order])
-#     if order_res['code'] == "0":
-#         bot.place_multiple_order([margin_order])
-#     else:
-#         logUtil.debug("合约风险减仓失败")
-   
-
-
-def place_diret_order(derivatives_order, margin_order):
-    hedge_orders = [margin_order, derivatives_order]
-    bot.place_multiple_order(hedge_orders)
 
 def op_sprd_status():
     logUtil.debug(bot.getSprdBookStatus().TimeStampChangedWithPrice())
@@ -179,44 +154,28 @@ def op_sprd_status():
 
 
 async def main():
-    while True:
-        input_data = input()
-
-        input_args = input_data.split()
-        if not input_data:
-            # todo 请求下两边的价格, 看一下合约溢价
-            break
-        op_type = input_args[0]
-        if op_type == "trade":
-            op_trade(input_args=input_args)
-        elif op_type == "sub_sprd":
-            await bot.startWs()
-            sprdId = input_args[1:]
-            await bot.subscribeSprdBooks(sprdId)
-        elif op_type == "sprd_status":
-            op_sprd_status()
-        elif op_type == "risk_monitor":
-            while True:
-                bot.control_risk()
-                time.sleep(5)
-                # exit()
+    # 获取命令行参数，跳过脚本名称
+    input_args = sys.argv[1:]
+    
+    if not input_args:
+        print("请提供参数")
+        return
+        
+    op_type = input_args[0]
+    if op_type == "trade":
+        op_trade(input_args=input_args)
+    elif op_type == "sub_sprd":
+        await bot.startWs()
+        sprdId = input_args[1:]
+        await bot.subscribeSprdBooks(sprdId)
+    elif op_type == "sprd_status":
+        op_sprd_status()
+    elif op_type == "risk_monitor":
+        while True:
+            bot.control_risk()
+            time.sleep(5)
 
 if __name__ == '__main__':
     bot = FundingRateArbitrageBot()
     asyncio.run(main())
 
-    #url = "wss://wspri.coinall.ltd:8443/ws/v5/ipublic?brokerId=9999"
-    # url = "wss://wspap.okex.com:8443/ws/v5/public"
-    # ws = WsPublic(url=url)
-    # ws.start()
-    # args = []
-    # arg1 = {"channel": "tickers", "instId": "SATS-USDT"}
-    # arg2 = {"channel": "tickers", "instId": "SATS-USDT-SWAP"}
-    # args.append(arg1)
-    # args.append(arg2)
-
-    # ws.subscribe(args, publicCallback)
-    # time.sleep(10)
-    # logUtil.debug("-----------------------------------------unsubscribe all--------------------------------------------")
-    # args3 = [arg1, arg2]
-    # ws.unsubscribe(args3, publicCallback)

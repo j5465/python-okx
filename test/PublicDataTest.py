@@ -1,3 +1,4 @@
+import json
 import unittest
 from okx import PublicData
 from loadEnv import load_env_tuple
@@ -24,8 +25,15 @@ class publicDataTest(unittest.TestCase):
         print(self.publicDataApi.get_convert_contract_coin(instId="BTC-USD-SWAP",sz = "1",px = "27000"))
     '''
     def test_get_instruments(self):
-        # print(self.publicDataApi.get_instruments("MARGIN"))
-        print(self.publicDataApi.get_instruments("SWAP"))
+        # 获取MARGIN数据并保存
+        margin_data = self.publicDataApi.get_instruments("MARGIN")
+        with open('info/margin_info.json', 'w') as f:
+            json.dump(margin_data, f, indent=4)
+            
+        # 获取SWAP数据并保存
+        swap_data = self.publicDataApi.get_instruments("SWAP")
+        with open('info/swap_info.json', 'w') as f:
+            json.dump(swap_data, f, indent=4)
     '''
     def test_delivery_exercise_history(self):
         print(self.publicDataApi.get_deliver_history("FUTURES","BTC-USD"))
