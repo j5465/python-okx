@@ -85,22 +85,6 @@ class FundingRateArbitrageBot(SetUpApi):
 
         logUtil.debug("FundingRateArbitrageBot place_multiple_order result: " + str(orders_res))
         return orders_res
-    
-    def control_risk(self):
-        try:        
-            res = self.AccountAPI.get_positions("SWAP", "NOT-USDT-SWAP")
-            logUtil.debug(res)
-
-            if res['code'] == '0':
-                if len(res['data']) == 1:
-                    notionalUsd = float(res['data'][0]['notionalUsd'])
-                    if notionalUsd > 5300:
-                        buy_args = "trade buy NMR-USDT 20 NMR-USDT-SWAP 201".split()
-                        op_trade(buy_args)
-        except Exception as e:
-            logUtil.error(traceback.format_exc())
-            self.AccountAPI = Account.AccountAPI(self.api_key, self.api_secret_key, self.passphrase, use_server_time=False, flag='0')
-
             
 
     # 腿交易sprd-bbo-tbt, sprd-books5
@@ -170,10 +154,7 @@ async def main():
         await bot.subscribeSprdBooks(sprdId)
     elif op_type == "sprd_status":
         op_sprd_status()
-    elif op_type == "risk_monitor":
-        while True:
-            bot.control_risk()
-            time.sleep(5)
+
 
 if __name__ == '__main__':
     bot = FundingRateArbitrageBot()
